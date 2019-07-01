@@ -53,6 +53,7 @@ namespace Microsoft.Azure.SignalR.Samples.Serverless
                 {
                     continue;
                 }
+                else if (argLine == "Q" || argLine == "Quite") break;
                 var args = argLine.Split(' ');
 
                 if (args.Length == 1 && args[0].Equals("broadcast"))
@@ -63,6 +64,14 @@ namespace Microsoft.Azure.SignalR.Samples.Serverless
                 {
                     await SendRequest(args[1], _hubName, args[2]);
                 }
+                else if (args.Length == 3 && args[0].ToLower().Equals("add"))
+                {
+                    await SendRequestOperateGroup(args[0], _hubName, args[1], args[2]);
+                }
+                else if (args.Length == 3 && args[0].ToLower().Equals("remove"))
+                {
+                    await SendRequestOperateGroup(args[0], _hubName, args[1], args[2]);
+                }
                 else
                 {
                     Console.WriteLine($"Can't recognize command {argLine}");
@@ -70,6 +79,40 @@ namespace Microsoft.Azure.SignalR.Samples.Serverless
             }
         }
 
+        public async Task SendRequestOperateGroup(string command, string hubName, string group, string userId)
+        {
+            string url = null;
+            switch (command)
+            {
+                case "add":
+                    url = AddUserToGroup(hubName, group, userId);
+                    break;
+                case "remove":
+                    url = RemoveUserFromGroup(hubName, group, userId);
+                    break;
+                default:
+                    Console.WriteLine($"Can't recognize command {command}");
+                    break;
+            }
+
+            if (!string.IsNullOrEmpty(url))
+            {
+                var request = BuildRequestOperateGroup(url, command);
+
+                // ResponseHeadersRead instructs SendAsync to return once headers are read
+                // rather than buffer the entire response. This gives a small perf boost.
+                // Note that it is important to dispose of the response when doing this to
+                // avoid leaving the connection open.
+                using (var response = await Client.SendAsync(request, HttpCompletionOption.ResponseHeadersRead))
+                {
+                    if (response.StatusCode != HttpStatusCode.Accepted)
+                    {
+                        Console.WriteLine($"Sent error: {response.StatusCode}");
+                    }
+                }
+            }
+
+        }
         public async Task SendRequest(string command, string hubName, string arg = null)
         {
             string url = null;
@@ -127,6 +170,17 @@ namespace Microsoft.Azure.SignalR.Samples.Serverless
             return $"{GetBaseUrl(hubName)}";
         }
 
+        private string AddUserToGroup(string hubName, string group, string userId)
+        {
+            return $"{GetBaseUrl(hubName)}/groups/{group}/users/{userId}";
+            //https://<instance-name>.service.signalr.net/api/v1/hubs/<hub-name>/groups/<group-name>/users/<userid>
+        }
+
+        private string RemoveUserFromGroup(string hubName, string group, string userId)
+        {
+            return $"{GetBaseUrl(hubName)}/groups/{group}/users/{userId}";
+        }
+
         private string GetBaseUrl(string hubName)
         {
             return $"{_endpoint}/api/v1/hubs/{hubName.ToLower()}";
@@ -149,12 +203,34 @@ namespace Microsoft.Azure.SignalR.Samples.Serverless
             return request;
         }
 
+        private HttpRequestMessage BuildRequestOperateGroup(string url, string command)
+        {
+            var request = new HttpRequestMessage();
+
+            request.RequestUri = GetUrl(url);
+            if (command == "add")
+                request.Method = HttpMethod.Put;
+            else if (command == "remove")
+                request.Method = HttpMethod.Delete;
+
+            request.Headers.Authorization =
+                new AuthenticationHeaderValue("Bearer", _serviceUtils.GenerateAccessToken(url, _serverName));
+            request.Headers.Accept.Add(new MediaTypeWithQualityHeaderValue("application/json"));
+            //request.Content = new StringContent(JsonConvert.SerializeObject(_defaultPayloadMessage), Encoding.UTF8, "application/json");
+
+            return request;
+        }
+
+
         private void ShowHelp()
         {
             Console.WriteLine("*********Usage*********\n" +
                               "send user <User Id>\n" +
                               "send group <Group Name>\n" +
                               "broadcast\n" +
+                              "add <Group Name> <User Id>\n" +
+                              "remove <Group Name> <User Id>\n" +
+                              "Q | Quite\n" +
                               "***********************");
         }
     }

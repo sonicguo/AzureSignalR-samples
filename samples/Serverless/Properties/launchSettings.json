@@ -1,0 +1,8 @@
+{
+  "profiles": {
+    "Serverless": {
+      "commandName": "Project",
+      "commandLineArgs": "server -h chat"
+    }
+  }
+}

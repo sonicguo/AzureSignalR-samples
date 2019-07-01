@@ -18,10 +18,15 @@ namespace Microsoft.Azure.SignalR.Samples.Serverless
 
             var connectionStringOption = app.Option("-c|--connectionstring", "Set ConnectionString", CommandOptionType.SingleValue, true);
             var hubOption = app.Option("-h|--hub", "Set hub", CommandOptionType.SingleValue, true);
+            
+            //var configuration = new ConfigurationBuilder()
+            //    .SetBasePath(Directory.GetCurrentDirectory())
+            //    .AddUserSecrets<Program>()
+            //    .Build();
 
             var configuration = new ConfigurationBuilder()
-                .SetBasePath(Directory.GetCurrentDirectory())
-                .AddUserSecrets<Program>()
+                //.SetBasePath(Directory.GetCurrentDirectory())
+                .AddJsonFile("appSettings.json")
                 .Build();
 
             app.Command("client", cmd =>
@@ -33,7 +38,7 @@ namespace Microsoft.Azure.SignalR.Samples.Serverless
 
                 cmd.OnExecute(async () =>
                 {
-                    var connectionString = connectionStringOption.Value() ?? configuration["Azure:SignalR:ConnectionString"];
+                    var connectionString = connectionStringOption.Value() ?? configuration["ConnectionStrings:Azure:SignalR:ConnectionString"];
 
                     if (string.IsNullOrEmpty(connectionString) || !hubOption.HasValue())
                     {
@@ -59,7 +64,7 @@ namespace Microsoft.Azure.SignalR.Samples.Serverless
 
                 cmd.OnExecute(async () =>
                 {
-                    var connectionString = connectionStringOption.Value() ?? configuration["Azure:SignalR:ConnectionString"];
+                    var connectionString = connectionStringOption.Value() ?? configuration["ConnectionStrings:Azure:SignalR:ConnectionString"];
 
                     if (string.IsNullOrEmpty(connectionString) || !hubOption.HasValue())
                     {
